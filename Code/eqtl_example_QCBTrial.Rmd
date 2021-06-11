@@ -1,0 +1,116 @@
+---
+title: 'Linear regression: eQTL example'
+author: "Arjun Bhattacharya"
+date: "6/16/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(warn = -1)
+```
+
+## Read in the data
+
+```{r read, message=FALSE}
+require(tibble)
+load('sample_eqtl.RData')
+print(tib.eqtl)
+```
+
+We can see that we have three variables:
+
+1.  Gene: the gene expression of the gene of interest. This is the ***dependent*** variable.
+
+2.  Age: the age of the patient. This is one of the ***predictor*** variables.
+
+3.  SNP: the number of alternative alleles of the SNP of interest. This is another ***predictor*** variable, but this variable is categorical.
+
+## Visualizing the data
+
+```{r vis1, message=FALSE}
+require(ggplot2)
+ggplot(data = tib.eqtl,
+       aes(x = as.factor(SNP),
+           y = Gene)) + geom_boxplot() + geom_jitter(width = .2) + 
+    xlab('SNP')
+
+ggplot(data = tib.eqtl,
+       aes(x = Age,
+           y = Gene)) +
+    geom_point()
+
+ggplot(data = tib.eqtl,
+       aes(x = as.factor(SNP),
+           y = Age)) + xlab('SNP')  +
+    geom_boxplot() + geom_jitter(width = .2)
+```
+
+## The full linear regression model
+
+Let's write out this model in math first.
+
+$$
+Gene = \beta_0 + \beta_{SNP} \times SNP + \beta_{Age} \times Age + \epsilon.
+$$
+
+How do we interpret these $\beta$ coefficients? $\beta_0$ is the intercept,
+and you can
+think of $\beta_{SNP}$ as a modifier of the intercept 
+and $\beta_{Age}$ as the slope.
+
+1.  $\beta_0$ is the intercept. This is the mean gene expression for samples with $SNP = 0$ and $Age = 0$. $SNP = 0$ is a realistic scenario (i.e., samples with 2 reference alleles at the SNP). $Age = 0$ is ***not*** a realistic scenario. This is why continuous predictors are often *centered*, but more on this later.
+
+2.  $\beta_{SNP}$ is the effect size of the eQTL: keeping age the same, for 1 additional alternative allele, the mean gene expression increases by $\beta_{SNP}$.
+
+3.  $\beta_{Age}$ is the effect size of age on gene expression: keep the SNP variable the same, for 1 additional year in age, the mean gene expression increases by $\beta_{Age}$.
+
+
+## Fitting the regression model using OLS
+
+```{r fit, message=FALSE}
+eqtl = lm(Gene ~ SNP + Age,data = tib.eqtl)
+print(summary(eqtl))
+```
+
+From here, we can estimate that each additional alternative allele at the SNP adds 0.402 to the mean gene expression ($\hat{\beta}_{SNP} \approx 0.402$) and 
+each additional year of age takes away 0.005 ($\hat{\beta}_{Age} \approx -0.005$).
+
+We can test the following hypotheses from the summary table:
+
+1.  $H_0: \beta_{SNP} = 0$ vs $H_1: \beta_{SNP} \neq 0$
+2.  $H_0: \beta_{Age} = 0$ vs $H_1: \beta_{Age} \neq 0$
+
+We see that the SNP parameter has $P \leq 0.01$, but age does not achieve this P-value cutoff. We can conclude a statistically significant associations between SNP and gene expression, in the presence of age Always be sure to distinguish between statistical and biological/clinical significance from your hypothesis tests.
+
+We'll talk about testing more complex hypotheses at a later date.
+
+## Assessing model assumptions
+
+Right off the bat, we see, from the summary table, that the adjusted $R^2$ of the model is approximately 0.91. Of course, this is toy data and such a high adjusted $R^2$ is rarely seen in actual practice. But this indicates that model chosen fits the data quite well: approximately 91% of the variance in gene expression can be explained by SNP, age, and the interaction between SNP and age.
+
+But, we have to check the four assumptions of linear regression. Let's define some concepts:
+
+-   **Outliers**: an outlier is defined as an observation that has a large residual. In other words, the observed value for the point is very different from that estimated by the regression model.
+
+-   **Leverage points**: A leverage point is defined as an observation that has a value of $X$ that is far away from the mean of $X$.
+
+-   **Influential observations**: An influential observation is defined as an observation that changes the slope of the line. Thus, influential points have a large influence on the fit of the model. One method to find influential points is to compare the fit of the model with and without each observation.
+
+Outliers that have high leverage and high influence on the regression parameters may be problematic.
+
+We can plot 4 informative plots using the really well-maintained `ggResidpanel` package from Katherine Goode and Kathleen Rey, with lots of annotation for how to use each diagnostic.
+
+```{r resid, message=FALSE}
+library(ggResidpanel)
+resid_panel(eqtl,plots = c('index','qq','cookd','lev'),
+            smoother=TRUE)
+```
+
+The first plot (top left) here is an ***index plot of residuals***. This plot can be used to look for patterns in the residuals in regards to the order of the data used to fit the model. Often the data are ordered in a meaningful way such as by time of observation. This plot can help to check if there is any relationship between the residuals and the order of the data. If a trend is found in this plot, it may suggest that a variable has been excluded from the model that would help to explain the variation in the response variable.
+
+The second plot (top right) is a ***QQ-plot of the residuals***. This plot is meant to be used to check if the residuals approximately follow a normal distribution. If the points follow the 1-1 line, it suggests that the residuals are approximately normally distributed.
+
+The third plot is a ***Cook's Distance plot***. This plot can be used to check for points with high leverage. Points above the dashed blue line are considered to be high leverage points, and points that have Cook's D values that are much larger than the rest are of particular interest.
+
+The last plot is a **Residual-Leverage plot**. This plot can be used to look for trends in the residuals based on the leverage values and to identify points with high leverage. Points that fall outside of the Cook's D contour lines may be of interest. Points that fall outside of either contour line with Cook's D set to 1 are considered to be high leverage points. As seen in the plot below, not all contour lines may appear when the plot is created if they fall far outside of the range of the observed leverage values.
