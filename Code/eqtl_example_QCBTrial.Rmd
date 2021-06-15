@@ -81,13 +81,21 @@ We can test the following hypotheses from the summary table:
 1.  $H_0: \beta_{SNP} = 0$ vs $H_1: \beta_{SNP} \neq 0$
 2.  $H_0: \beta_{Age} = 0$ vs $H_1: \beta_{Age} \neq 0$
 
-We see that the SNP parameter has $P \leq 0.01$, but age does not achieve this P-value cutoff. We can conclude a statistically significant associations between SNP and gene expression, in the presence of age Always be sure to distinguish between statistical and biological/clinical significance from your hypothesis tests.
+We see that the SNP parameter has $P \leq 0.01$, but age does not achieve this P-value cutoff. We can conclude a statistically significant associations between SNP and gene expression, in the presence of age. *Always be sure to distinguish between statistical and biological/clinical significance after your hypothesis tests.*
 
 We'll talk about testing more complex hypotheses at a later date.
 
 ## Assessing model assumptions
 
-Right off the bat, we see, from the summary table, that the adjusted $R^2$ of the model is approximately 0.91. Of course, this is toy data and such a high adjusted $R^2$ is rarely seen in actual practice. But this indicates that model chosen fits the data quite well: approximately 91% of the variance in gene expression can be explained by SNP, age, and the interaction between SNP and age.
+There are two aspects of a regression that are relevant in checking
+model assumptions: (1) assessing goodness of fit and (2) looking for
+problematic samples or trends that violate the basic assumptions.
+
+Right off the bat, we see, from the summary table, that the adjusted $R^2$ of the model is approximately 0.07. Of course, this is toy data and such a high adjusted $R^2$ 
+for a single eQTL is rarely seen in actual practice. 
+But this indicates that model chosen fits the data quite well: 
+approximately 7% of the variance in gene expression can be explained by SNP, 
+age, and the interaction between SNP and age.
 
 But, we have to check the four assumptions of linear regression. Let's define some concepts:
 
@@ -103,14 +111,18 @@ We can plot 4 informative plots using the really well-maintained `ggResidpanel` 
 
 ```{r resid, message=FALSE}
 library(ggResidpanel)
-resid_panel(eqtl,plots = c('index','qq','cookd','lev'),
+resid_panel(eqtl,plots = c('ls','qq','cookd','lev'),
             smoother=TRUE)
 ```
 
-The first plot (top left) here is an ***index plot of residuals***. This plot can be used to look for patterns in the residuals in regards to the order of the data used to fit the model. Often the data are ordered in a meaningful way such as by time of observation. This plot can help to check if there is any relationship between the residuals and the order of the data. If a trend is found in this plot, it may suggest that a variable has been excluded from the model that would help to explain the variation in the response variable.
+The first plot (top left) here is an ***location-scale plot***. This plot shows whether residuals are spread equally along the ranges of input variables (predictor). The assumption of equal variance (homoscedasticity) could also be checked with this plot. If we see a horizontal line with randomly spread points, it means that the model is good.
+Checks ***linearity***, ***homoscedasticity***, and ***independence***.
 
 The second plot (top right) is a ***QQ-plot of the residuals***. This plot is meant to be used to check if the residuals approximately follow a normal distribution. If the points follow the 1-1 line, it suggests that the residuals are approximately normally distributed.
+Checks ***normality***.
 
-The third plot is a ***Cook's Distance plot***. This plot can be used to check for points with high leverage. Points above the dashed blue line are considered to be high leverage points, and points that have Cook's D values that are much larger than the rest are of particular interest.
+The last two plots search of these high problematic
+points. 
+The third plot (bottom left) is a ***Cook's Distance plot***. This plot can be used to check for points with high leverage. Points above the dashed blue line are considered to be high leverage points, and points that have Cook's D values that are much larger than the rest are of particular interest.
 
-The last plot is a **Residual-Leverage plot**. This plot can be used to look for trends in the residuals based on the leverage values and to identify points with high leverage. Points that fall outside of the Cook's D contour lines may be of interest. Points that fall outside of either contour line with Cook's D set to 1 are considered to be high leverage points. As seen in the plot below, not all contour lines may appear when the plot is created if they fall far outside of the range of the observed leverage values.
+The last plot (bottom right) is a **Residual-Leverage plot**. This plot can be used to look for trends in the residuals based on the leverage values and to identify points with high leverage. Points that fall outside of the Cook's D contour lines may be of interest. Points that fall outside of either contour line with Cook's D set to 1 are considered to be high leverage points. As seen in the plot below, not all contour lines may appear when the plot is created if they fall far outside of the range of the observed leverage values.
